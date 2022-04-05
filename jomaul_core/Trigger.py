@@ -1,7 +1,7 @@
 # Import utilities
 import os
 import json
-import datetime
+from datetime import datetime
 
 class TriggerSet:
     def __init__(self, config={}):
@@ -94,23 +94,37 @@ class TriggerSet:
 class TriggerHandler:
     def __init__(self, config={}):
         # Configure the trigger file path
-        if 'trigger_file' in config.keys():
-            self.__trigger_file = config['trigger_file']
+        if 'trigger' in config.keys():
+            self.__trigger_file = config['trigger']['trigger_file']
         else:
-            self.__trigger_file = "trigger.json"
+            self.__trigger_file = "data/trigger.json"
         # Create or load the trigger states
         if os.path.exists(self.__trigger_file):
+            # Load data from trigger file
             with open(self.__trigger_file, 'r') as trigger_file:
-                self.__triggers = json.load(trigger_file)
-                for trigger_name in self.__triggers.keys():
-                    self.__triggers[trigger_name] = Trigger(
-                        name=self.__triggers[trigger_name]['name'],
-                        state=self.__triggers[trigger_name]['state'],
-                        reset_interval=self.__triggers[trigger_name]['reset_interval'],
-                        expiration=self.__triggers[trigger_name]['expiration']
-                        )
+                json_object = json.load(trigger_file)
+                # Load trigger states
+                self.__trigger_states = json_object['trigger_states']
+                # Load trigger sets
+                self.__trigger_sets = json_object['trigger_sets']
+            # Build Trigger objects
+            for trigger_name in self.__trigger_states.keys():
+                self.__trigger_states[trigger_name]['trigger_object'] = Trigger(
+                    name=self.__trigger_states[trigger_name]['name'],
+                    state=self.__trigger_states[trigger_name]['state'],
+                    config={
+                        "reset_interval":self.__trigger_states[trigger_name]['reset_interval'],
+                        "expiration":self.__trigger_states[trigger_name]['expiration']
+                        }
+                    )
+            # Build TriggerSet objects
+            for trigger_set_name in self.__trigger_sets.keys():
+                self.__trigger_sets[trigger_set_name]['trigger_set_object'] = TriggerSet(
+                    config = self.__trigger_sets[trigger_set_name]['config']
+                )
         else:
-            self.__triggers = {}
+            self.__trigger_states = {}
+            self.__trigger_sets = {}
 
     # Saves the trigger states to a JSON formatted file
     def save_to_disk(self):
@@ -122,29 +136,45 @@ class TriggerHandler:
 
     # Gets the current state of the specified trigger, assuming its False if the trigger is not found
     def get_trigger_state(self, trigger_name):
-        if trigger_name in self.__triggers.keys():
-            return self.__triggers[trigger_name].state()
+        if trigger_name in self.__trigger_states.keys():
+            return self.__trigger_states[trigger_name]['trigger_object'].state()
         else:
             return False
 
     # Sets the state of the specified trigger, creating it if it does not exist
-    def set(self, trigger_name, trigger_state, reset_interval=None):
+    def set(self, trigger_name, trigger_state, config={'reset_interval':None, 'type':'manual'}):
         if isinstance(trigger_state, bool) and isinstance(trigger_name, str):
-            if trigger_name in self.__triggers.keys():
-                if self.__triggers[trigger_name].get_reset_interval() != reset_interval:
-                    self.__triggers[trigger_name] = Trigger(trigger_name,trigger_state,reset_interval)
+            if trigger_name in self.__trigger_states.keys():
+                if self.__trigger_states[trigger_name]['trigger_object'].get_reset_interval() != config['reset_interval']:
+                    self.__trigger_states[trigger_name]['trigger_object'] = Trigger(trigger_name,trigger_state,config)
                 else:
-                    self.__triggers[trigger_name].set_state(trigger_state)
+                    self.__trigger_states[trigger_name]['trigger_object'].set_state(trigger_state)
             else:
-                self.__triggers[trigger_name] = Trigger(name=trigger_name,state=trigger_state,reset_interval=reset_interval)
+                self.__trigger_states[trigger_name]['trigger_object'] = Trigger(name=trigger_name,state=trigger_state,config=config)
             return True
         else:
             return "Invalid trigger object or trigger state."
 
+    def set_trigger_states(self, trigger_states):
+        # Created an empty list object for triggered jobs
+        triggered_jobs = []
+        # Iterate through each trigger name in the trigger_states object
+        for trigger_name in trigger_states.keys():
+            self.set(trigger_name, trigger_states[trigger_name])
+            for trigger_set in self.__trigger_sets.keys():
+                if self.__trigger_sets[trigger_set]['trigger_set_object'].contains_trigger(trigger_name) and self.__trigger_sets[trigger_set]['trigger_set_object'].evaluate(self):
+                    for job_name in self.__trigger_sets[trigger_set]['mounted_jobs']:
+                        if job_name not in triggered_jobs:
+                            triggered_jobs.append(job_name)
+        if len(triggered_jobs) != 0:
+            return triggered_jobs
+        else:
+            return None
+
 class Trigger:
-    def __init__(self, name="TriggerObject", state=False, reset_interval=None, expiration=None):
+    def __init__(self, name="TriggerObject", state=False, config={'reset_interval':None, 'type':'manual'}, expiration=None):
         self.__name = name
-        self.__reset_interval = reset_interval
+        self.__config = config
         self.__expiration = expiration
         if expiration != None:
             self.__state = state
@@ -164,7 +194,10 @@ class Trigger:
         return self.__state
 
     def get_reset_interval(self):
-        return self.__reset_interval
+        return self.__config['reset_interval']
+
+    def get_type(self):
+        return self.__config['type']
 
     def expiration(self):
         return self.__expiration
@@ -174,8 +207,8 @@ class Trigger:
             # Checks reset_interval if trigger state is being set to True
             if state == True:
                 # If reset interval is configured, set expiration date
-                if self.__reset_interval != None:
-                    self.__expiration = datetime.now() + self.__reset_interval
+                if self.__config['reset_interval'] != None:
+                    self.__expiration = datetime.now() + self.__config['reset_interval']
             # Set state to True
             self.__state = state
             return [True, self.__state]
@@ -186,6 +219,9 @@ class Trigger:
         return {
             "name":self.__name,
             "state":self.__state,
-            "reset_interval":str(self.__reset_interval),
+            "config":{
+                "reset_interval":str(self.__config['reset_interval']),
+                "type":self.__config['type']
+            },
             "expiration":str(self.__expiration)
         }
