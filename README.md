@@ -1,5 +1,5 @@
 # jomaul
-A suite of open source tools that allow end-users to build system integrations and automations requiring little to no programming.
+An open source workflow automation API, built using Python and the Flask web framework.
 
 ## How does it work?
 At its core, jomaul is meant to run jobs on a set of predefined schedules. Each job defines its own schedule, using one of the tool's built in schedule types. 
