@@ -24,6 +24,10 @@ job_views = Blueprint('jobs', __name__, url_prefix='/jobs')
 def get_jobs():
     return job_handler.list_jobs()
 
+@job_views.route('/<job_id>')
+def get_job(job_id):
+    return job_handler.get_job(int(job_id))
+
 app = Flask(__name__)
 if 'server_type' in config:
     if config['server_type'] == 'job':

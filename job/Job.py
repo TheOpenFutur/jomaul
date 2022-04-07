@@ -26,6 +26,11 @@ class JobHandler:
             "jobs":[self.__jobs[job].get_config() for job in self.__jobs.keys()]
         }
 
+    def get_job(self, job_id):
+        for job in self.__jobs.keys():
+            if self.__jobs[job].get_id() == job_id:
+                return self.__jobs[job].get_config()
+
     # Saves jobs to disk
     def save_to_disk(self):
         # Get job file contents
@@ -81,6 +86,9 @@ class Job:
 
     def get_config(self):
         return self.__config
+
+    def get_id(self):
+        return self.__config['id']
 
     # Runs the main portion of the job, according to the configurations set above
     def run(self, parameters = {}):
