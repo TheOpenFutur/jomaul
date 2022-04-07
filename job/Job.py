@@ -21,6 +21,10 @@ class JobHandler:
         else:
             self.__jobs = {}
 
+    def list_jobs(self):
+        return {
+            "jobs":[self.__jobs[job].get_config() for job in self.__jobs.keys()]
+        }
 
     # Saves jobs to disk
     def save_to_disk(self):
