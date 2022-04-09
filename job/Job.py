@@ -21,10 +21,48 @@ class JobHandler:
         else:
             self.__jobs = {}
 
+    def get_owner_id(self, job_id):
+        for job in self.__jobs.keys():
+            if self.__jobs[job].get_id() == job_id:
+                return self.__jobs[job].get_owner_id()
+
     def list_jobs(self):
         return {
             "jobs":[self.__jobs[job].get_config() for job in self.__jobs.keys()]
         }
+
+    def get_job(self, job_id):
+        for job in self.__jobs.keys():
+            if self.__jobs[job].get_id() == job_id:
+                return self.__jobs[job].get_config()
+        return {"error":"Job does not exist."}
+
+    def update_job(self, config):
+        for job in self.__jobs.keys():
+            if self.__jobs[job].get_id() == config['id']:
+                self.__jobs[job] = Job(config = config)
+                return self.__jobs[job].get_config()
+        return {"error":"No job matching the supplied id: {}".format(config['id'])}
+
+    def create_jobs(self, configs={}):
+        next_id = 0
+        for job in self.__jobs.keys():
+            if self.__jobs[job].get_id() >= next_id:
+                next_id = self.__jobs[job].get_id() + 1
+        for new_job in configs.keys():
+            if new_job not in self.__jobs.keys():
+                configs[new_job]['id'] = next_id
+                next_id += 1
+                self.__jobs[new_job] = Job(configs[new_job])
+            else:
+                configs[new_job] = "Job name already in use."
+        return configs
+
+    def delete_job(self, job_id):
+        for job in self.__jobs.keys():
+            if self.__jobs[job].get_id() == job_id:
+                del self.__jobs[job]
+                return {"deleted_job":job}
 
     # Saves jobs to disk
     def save_to_disk(self):
@@ -39,9 +77,12 @@ class JobHandler:
             json.dump(file_contents, job_file, indent=4)
 
     # Runs a job with the specified name, along with its dependent jobs
-    def run_job(self, job_name, parameters=None):
-        job_path = self.__jobs[job_name].get_path()
-        job = self.load_job("{}.py".format(job_path), config=self.__jobs[job_name].get_config())
+    def run_job(self, job_id, parameters=None):
+        job_path = ""
+        for job in self.__jobs.keys():
+            if self.__jobs[job].get_id() == job_id:
+                job_path = self.__jobs[job].get_path()
+        job = self.load_job("{}.py".format(job_path), config=self.__jobs[job].get_config())
         if parameters != None:
             return job.run(parameters=parameters)
         else:
@@ -72,15 +113,25 @@ class Job:
         else:
             self.__required_parameters = {}
 
+    # Get the id of the user who owns the job
+    def get_owner_id(self):
+        return self.__config['owner_id']
+
     # Returns the parameters for the targeted Job object
     def get_parameters(self):
         return self.parameters
 
+    # Get the path of the module used by the job
     def get_path(self):
         return self.__job_path
 
+    # Get the config of this specific job
     def get_config(self):
         return self.__config
+
+    # Get this specific job's id
+    def get_id(self):
+        return self.__config['id']
 
     # Runs the main portion of the job, according to the configurations set above
     def run(self, parameters = {}):
