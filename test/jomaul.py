@@ -15,11 +15,10 @@ class Test:
         # Display results
         for result in test_results.keys():
             print("{} - {}".format(result,test_results[result]['status']))
-            print("----------------------")
             if self.only_show_failed_results == False:
-                for single_result in test_results[result].keys():
-                    print("| {} - {}".format(single_result, test_results[result][single_result]))
+                for single_result in test_results[result]['results'].keys():
+                    print("| {} - {}".format(single_result, test_results[result]['results'][single_result]))
             else:
-                for single_result in test_results[result]:
-                    if test_results[result][single_result] == False:
-                        print("| {} - {}".format(single_result, test_results[result][single_result]))
+                for single_result in test_results[result]['results']:
+                    if test_results[result]['results'][single_result] == False:
+                        print("| {} - {}".format(single_result, test_results[result]['results'][single_result]))

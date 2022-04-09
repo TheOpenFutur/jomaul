@@ -35,24 +35,25 @@ class JobHandler:
         for job in self.__jobs.keys():
             if self.__jobs[job].get_id() == job_id:
                 return self.__jobs[job].get_config()
+        return {"error":"Job does not exist."}
 
     def update_job(self, config):
         for job in self.__jobs.keys():
             if self.__jobs[job].get_id() == config['id']:
                 self.__jobs[job] = Job(config = config)
-                return self.__jobs[job]
-        return "No job matching the supplied id: {}".format(config['id'])
+                return self.__jobs[job].get_config()
+        return {"error":"No job matching the supplied id: {}".format(config['id'])}
 
     def create_jobs(self, configs={}):
         next_id = 0
         for job in self.__jobs.keys():
             if self.__jobs[job].get_id() >= next_id:
-                next_id = self.__jobs[job].get_id()
+                next_id = self.__jobs[job].get_id() + 1
         for new_job in configs.keys():
             if new_job not in self.__jobs.keys():
                 configs[new_job]['id'] = next_id
                 next_id += 1
-                self.__jobs[new_job] = configs[new_job]
+                self.__jobs[new_job] = Job(configs[new_job])
             else:
                 configs[new_job] = "Job name already in use."
         return configs
@@ -143,4 +144,3 @@ class Job:
                 return [False, "The following required parameter is missing: {}".format(required_parameter)]
             if self.__required_parameters[required_parameter] != None and type(self.parameters[required_parameter]) != self.__required_parameters[required_parameter]:
                 return [False, "The following parameter is a {}, when it should be a {}: {}".format(type(self.parameters[required_parameter]), self.__required_parameters[required_parameter], required_parameter)]
-        

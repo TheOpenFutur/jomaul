@@ -34,14 +34,14 @@ def create_jobs():
 def get_job(job_id):
     return job_handler.get_job(int(job_id))
 
-@job_views.route('/<job_id>', methods=['UPDATE'])
+@job_views.route('/<job_id>', methods=['POST'])
 def update_job(job_id):
     config = request.json
     config['id'] = int(job_id)
     # TODO: ADD CONFIG VALIDATION
     return job_handler.update_job(config)
 
-@job_views.route('/<job_id>', methods=['POST'])
+@job_views.route('/<job_id>/run', methods=['GET'])
 def run_job(job_id):
     content = request.json
     parameters = None
